@@ -45,7 +45,7 @@ public:
 	bool isEmpty() { return head.load() == &tail; }
 private:
 	stackElem tail;
-	std::atomic<stackElem *> head; //must become unique_ptr
+	std::atomic<stackElem *> head;
 };
 
 }
