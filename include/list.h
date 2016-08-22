@@ -41,7 +41,7 @@ public:
 	void insert(V v) {
 		elem *newElem = new elem(v, &dummy);
 		while (true) {
-			elem *oldTail = get_ownership_and_invalidate(tail);
+			elem *oldTail = getOwnership(tail);
 			if (&dummy != oldTail) {
 				oldTail->next.store(newElem);
 				tail.store(newElem);
@@ -57,7 +57,7 @@ public:
 
 	V remove() {
 		while (true) {
-			std::unique_ptr<elem> headElem(get_ownership_and_invalidate(head));
+			std::unique_ptr<elem> headElem(getOwnership(head));
 			if (&dummy == headElem.get()) {
 				head.store(headElem.release());
 				throw std::runtime_error("empty");
@@ -90,7 +90,7 @@ private:
 		elem(V value, elem *n) : v(value), next(n) { }
 	};
 
-	static elem *get_ownership_and_invalidate(std::atomic<elem *> &ptr) {
+	static elem *getOwnership(std::atomic<elem *> &ptr) {
 		auto to_take = ptr.load();
 		while (nullptr == to_take || !ptr.compare_exchange_weak(to_take, nullptr)) {
 			to_take = ptr.load();
