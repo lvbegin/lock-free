@@ -85,10 +85,9 @@ private:
 
 	struct elem {
 		V v;
-		int flag;
 		std::atomic<elem *> next;
-		elem(elem *n) : flag(0), next(n) { }
-		elem(V value, elem *n) : v(value), flag(0), next(n) { }
+		elem(elem *n) : next(n) { }
+		elem(V value, elem *n) : v(value), next(n) { }
 	};
 
 	elem *get_ownership_and_invalidate(std::atomic<elem *> &ptr) {
