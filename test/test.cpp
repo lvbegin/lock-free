@@ -92,13 +92,14 @@ static void test_lock_free_stack(void)
 
 
 
-void readerThreadList(lockFree::list2<int> *s)
+void readerThreadList(lockFree::list<int> *s, std::atomic<unsigned   int> *receivedMessage)
 {
 	unsigned int j = 0;
 	unsigned int i = 0;
 	while (i < nbMessage) {
 		try {
 			j += s->remove();
+			(*receivedMessage)++;
 			i++;
 			if (j % 5 == 0)
 				std::cout << "." << std::flush;
@@ -111,7 +112,7 @@ void readerThreadList(lockFree::list2<int> *s)
 	std::cout << std::endl;
 }
 
-void writerThreadList(lockFree::list2<int> *s)
+void writerThreadList(lockFree::list<int> *s)
 {
 	for (unsigned int i = 0; i < nbMessage; i++) {
 		s->insert(1);
@@ -122,44 +123,26 @@ void writerThreadList(lockFree::list2<int> *s)
 
 static void test_lock_free_list(void)
 {
-	lockFree::list2<int> s;
+	lockFree::list<int> s;
 	std::unique_ptr<std::thread> writer[nbThreads];
 	std::unique_ptr<std::thread> reader[nbThreads];
-
-	std::cout << "test lock free stack: ";
+	std::atomic<unsigned int> receivedMessage { 0 };
+	std::cout << "test lock free list: ";
 
 	for (unsigned int i = 0; i < nbThreads; i++) {
 		writer[i].reset(new std::thread(writerThreadList, &s));
-		reader[i].reset(new std::thread(readerThreadList, &s));
+		reader[i].reset(new std::thread(readerThreadList, &s, &receivedMessage));
 	}
 	for (unsigned int i = 0; i < nbThreads; i++) {
 		writer[i]->join();
 		reader[i]->join();
 	}
 
-	if (s.isEmpty())
+	if (s.isEmpty() && receivedMessage.load() == nbThreads * nbMessage)
 		std::cout << "OK" << std::endl;
 	else
 		std::cout << "KO" << std::endl;
 }
-//
-//
-//static void test_lock_free_list(void) {
-//	lockFree::list<int> l;
-//	l.insert(3);
-//	auto v = l.remove();
-//	std::cout << v << std::endl;
-//
-//	lockFree::list2<int> l2;
-//	l2.insert(4);
-//	l2.insert(5);
-//
-//	auto v2 = l2.remove();
-//	std::cout << v2 << std::endl;
-//	v2 = l2.remove();
-//	std::cout << v2 << std::endl;
-//
-//}
 
 int main() {
 	test_lock_free_stack();
