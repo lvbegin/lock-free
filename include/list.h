@@ -90,7 +90,7 @@ private:
 		elem(V value, elem *n) : v(value), next(n) { }
 	};
 
-	elem *get_ownership_and_invalidate(std::atomic<elem *> &ptr) {
+	static elem *get_ownership_and_invalidate(std::atomic<elem *> &ptr) {
 		auto to_take = ptr.load();
 		while (nullptr == to_take || !ptr.compare_exchange_weak(to_take, nullptr)) {
 			to_take = ptr.load();
