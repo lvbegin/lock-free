@@ -33,92 +33,69 @@
 namespace lockFree {
 
 
-
 template <typename V>
-class list2 {
+class list {
 public:
-	list2() : head(&dummy), tail(&dummy), dummy(nullptr) {}
-	~list2() = default;
+	list() : head(&dummy), tail(&dummy), dummy(nullptr) { }
+	~list() = default;
 	void insert(V v) {
 		elem *newElem = new elem(v, &dummy);
 		while (true) {
-			elem *previous = get_ownership_and_invalidate(tail);
-			if (&dummy == previous)
-			{
-				if (!head.compare_exchange_strong(previous, newElem)) {
-					tail.store(previous);
-				}
-				else {
-					tail.store(newElem);
-					return ;
-				}
-			}
-			else {
-				previous->next.store(newElem);
+			elem *oldTail = get_ownership_and_invalidate(tail);
+			if (&dummy != oldTail) {
+				oldTail->next.store(newElem);
 				tail.store(newElem);
 				return ;
 			}
+			if (head.compare_exchange_strong(oldTail, newElem)) {
+				tail.store(newElem);
+				return ;
+			}
+			tail.store(oldTail);
 		}
 	}
 
 	V remove() {
 		while (true) {
-			std::unique_ptr<elem> e(get_ownership_and_invalidate(head));
-			if (&dummy == e.get()) {
-				head.store(e.release());
+			std::unique_ptr<elem> headElem(get_ownership_and_invalidate(head));
+			if (&dummy == headElem.get()) {
+				head.store(headElem.release());
 				throw std::runtime_error("empty");
 			}
-
-			auto newHead = e->next.load();
-			if (newHead == &dummy) {
-				elem *old_value = e.get();
-				if (!tail.compare_exchange_strong(old_value, newHead))
- 				{
-					head.store(e.release());
+			auto newHead = headElem->next.load();
+			if (&dummy != newHead) {
+				if (newHead->next.load() == &dummy && tail.load() != newHead) {
+					head.store(headElem.release());
 					continue;
 				}
+				head.store(newHead);
+				return headElem->v;
 			}
-			head.store(newHead);
-			return e->v;
+			elem *old_value = headElem.get();
+			if (tail.compare_exchange_strong(old_value, newHead))
+			{
+				head.store(newHead);
+				return headElem->v;
+			}
+			head.store(headElem.release());
 		}
    	}
-	bool isEmpty() { return head.load() == &dummy; }
+	bool isEmpty() const { return head.load() == &dummy; }
 private:
 
 	struct elem {
 		V v;
 		int flag;
 		std::atomic<elem *> next;
-		elem(elem *n) : flag(0), next(n) {}
-		elem(V value, elem *n) : v(value), flag(0), next(n) {}
+		elem(elem *n) : flag(0), next(n) { }
+		elem(V value, elem *n) : v(value), flag(0), next(n) { }
 	};
-
-	/* idea:
-	 * 1) push :
-	 * 	- create a new elem with next == dummy
-	 * 	- read tail and invalidate
-	 * 	- if (tail == dummy)
-	 * 	     replace head by elem
-	 * 	- tail -> next = elem
-	 * 	- replace tail by elem
-	 * 	2) pop:
-	 * 	 - get and invalidate the head
-	 * 	 - if dummy element
-	 * 	        reset the head return 'empty'
-	 * 	 - if head->next is dummy
-	 * 	        read tail and invalidate
-	 * 	        if tail == elem
-	 * 	           tail = head = dummy (head first so that pop is empty and push cannot be validate while the head is not set)
- 	 * 	        else
-	 * 	           reset tail and head and retry (head first)
-	 * 	   else
-	 * 	        replace head by head->next
-	 * 	   return head
-	 */
 
 	elem *get_ownership_and_invalidate(std::atomic<elem *> &ptr) {
 		auto to_take = ptr.load();
-		while (nullptr == to_take || !ptr.compare_exchange_weak(to_take, nullptr)) { to_take = ptr.load(); }
+		while (nullptr == to_take || !ptr.compare_exchange_weak(to_take, nullptr)) {
+			to_take = ptr.load();
+		}
 		return to_take;
 	}
 
