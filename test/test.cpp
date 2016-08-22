@@ -37,7 +37,7 @@
 static const unsigned int nbMessage = 100000;
 static const unsigned int nbThreads = 10;
 
-void readerThread(lockFree::stack<int> *s)
+static void readerThread(lockFree::stack<int> *s, std::atomic<unsigned   int> *receivedMessage)
 {
 	unsigned int j = 0;
 	unsigned int i = 0;
@@ -45,6 +45,7 @@ void readerThread(lockFree::stack<int> *s)
 		try {
 			j += s->pop();
 			i++;
+			(*receivedMessage)++;
 			if (j % 5 == 0)
 				std::cout << "." << std::flush;
 		}
@@ -55,7 +56,7 @@ void readerThread(lockFree::stack<int> *s)
 	std::cout << std::endl;
 }
 
-void writerThread(lockFree::stack<int> *s)
+static void writerThread(lockFree::stack<int> *s)
 {
 	for (unsigned int i = 0; i < nbMessage; i++) {
 		s->push(1);
@@ -69,12 +70,13 @@ static void test_lock_free_stack(void)
 	lockFree::stack<int> s;
 	std::unique_ptr<std::thread> writer[nbThreads];
 	std::unique_ptr<std::thread> reader[nbThreads];
+	std::atomic<unsigned int> receivedMessage { 0 };
 
 	std::cout << "test lock free stack: ";
 
 	for (unsigned int i = 0; i < nbThreads; i++) {
 		writer[i].reset(new std::thread(writerThread, &s));
-		reader[i].reset(new std::thread(readerThread, &s));
+		reader[i].reset(new std::thread(readerThread, &s, &receivedMessage));
 	}
 
 	for (unsigned int i = 0; i < nbThreads; i++) {
@@ -82,7 +84,7 @@ static void test_lock_free_stack(void)
 		reader[i]->join();
 	}
 
-	if (s.isEmpty())
+	if (s.isEmpty() && receivedMessage.load() == nbThreads * nbMessage)
 		std::cout << "OK" << std::endl;
 	else
 		std::cout << "KO" << std::endl;
@@ -92,7 +94,7 @@ static void test_lock_free_stack(void)
 
 
 
-void readerThreadList(lockFree::list<int> *s, std::atomic<unsigned   int> *receivedMessage)
+static void readerThreadList(lockFree::list<int> *s, std::atomic<unsigned   int> *receivedMessage)
 {
 	unsigned int j = 0;
 	unsigned int i = 0;
@@ -112,7 +114,7 @@ void readerThreadList(lockFree::list<int> *s, std::atomic<unsigned   int> *recei
 	std::cout << std::endl;
 }
 
-void writerThreadList(lockFree::list<int> *s)
+static void writerThreadList(lockFree::list<int> *s)
 {
 	for (unsigned int i = 0; i < nbMessage; i++) {
 		s->insert(1);
