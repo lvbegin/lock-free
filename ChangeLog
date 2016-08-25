@@ -1,0 +1,3 @@
+First version containing a lock free implementation of
+- a stack data structure 
+- a list data structure 
