@@ -71,7 +71,7 @@ public:
 		std::unique_ptr<stackElem> toDelete(elem);
 		return toDelete->v;
 	}
-	bool isEmpty() { return head.load() == &tail; }
+	bool isEmpty() const { return head.load() == &tail; }
 private:
 	stackElem tail;
 	std::atomic<stackElem *> head;
