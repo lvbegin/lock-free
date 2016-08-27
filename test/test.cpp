@@ -65,7 +65,7 @@ static void writerThread(lockFree::stack<int> *s)
 	}
 }
 
-static void test_lock_free_stack(void)
+static unsigned int test_lock_free_stack(void)
 {
 	lockFree::stack<int> s;
 	std::unique_ptr<std::thread> writer[nbThreads];
@@ -84,15 +84,15 @@ static void test_lock_free_stack(void)
 		reader[i]->join();
 	}
 
-	if (s.isEmpty() && receivedMessage.load() == nbThreads * nbMessage)
+	if (s.isEmpty() && receivedMessage.load() == nbThreads * nbMessage) {
 		std::cout << "OK" << std::endl;
-	else
+		return 0;
+	}
+	else {
 		std::cout << "KO" << std::endl;
-
-
+		return 1;
+	}
 }
-
-
 
 static void readerThreadList(lockFree::list<int> *s, std::atomic<unsigned   int> *receivedMessage)
 {
@@ -123,7 +123,7 @@ static void writerThreadList(lockFree::list<int> *s)
 	}
 }
 
-static void test_lock_free_list(void)
+static unsigned int test_lock_free_list(void)
 {
 	lockFree::list<int> s;
 	std::unique_ptr<std::thread> writer[nbThreads];
@@ -140,14 +140,31 @@ static void test_lock_free_list(void)
 		reader[i]->join();
 	}
 
-	if (s.isEmpty() && receivedMessage.load() == nbThreads * nbMessage)
+	if (s.isEmpty() && receivedMessage.load() == nbThreads * nbMessage) {
 		std::cout << "OK" << std::endl;
-	else
+		return 0;
+	}
+	else {
 		std::cout << "KO" << std::endl;
+		return 1;
+	}
+}
+
+typedef unsigned int (*test_t)(void);
+unsigned int execute_tests(const test_t tests[]) {
+	unsigned int failure { 0 };
+	while (*tests) {
+		failure += (*tests)();
+		tests++;
+	}
+	return failure;
 }
 
 int main() {
-	test_lock_free_stack();
-	test_lock_free_list();
-	return EXIT_SUCCESS;
+	static const test_t tests[] {
+		test_lock_free_stack,
+		test_lock_free_list,
+		nullptr,
+	};
+	return execute_tests(tests);
 }
