@@ -39,9 +39,7 @@ namespace lockFree {
 template <typename V>
 class stack {
 public:
-	stack() : tail(nullptr), head(nullptr) {
-		head.store(&tail);
-	}
+	stack() : tail(nullptr), head(&tail) { }
 	~stack()  = default;
 	struct stackElem {
 		V v;
@@ -55,7 +53,6 @@ public:
 
 		while (nullptr == elem->next || !head.compare_exchange_weak(elem->next, elem))
 			elem->next = head.load();
-
 	}
 	V pop() {
 		stackElem *elem = head.load();
@@ -66,7 +63,6 @@ public:
 			head.store(elem);
 			throw std::runtime_error("empty");
 		}
-
 		head.store(elem->next);
 		std::unique_ptr<stackElem> toDelete(elem);
 		return toDelete->v;
