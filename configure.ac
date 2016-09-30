@@ -17,8 +17,7 @@ AC_CHECK_LIB(pthread, pthread_create)
 # Checks for typedefs, structures, and compiler characteristics.
 AC_CHECK_HEADER_STDBOOL
 AC_LANG([C++])
-#AX_CXX_COMPILE_STDCXX_11
-CXXFLAGS='-Wall -std=gnu++0x'
+AX_CXX_COMPILE_STDCXX_11([noext],[mandatory])
 # Checks for library functions.
 
 AC_CONFIG_FILES([Makefile])
